@@ -10,6 +10,7 @@
  * plumbing again.
  */
 import { getPdfjs } from '../../lib/pdf/pdfjs';
+import { workerDocumentOptions } from '../../lib/pdf/workerDocument';
 import { recodeImage } from '../imageCodec';
 import { runJob } from '../../engine/job';
 import type { JobProgress, PdfJob } from '../../engine/job';
@@ -79,16 +80,7 @@ self.onmessage = async (event: MessageEvent<WorkerInbound>) => {
     // How this host loads pdf.js. A Node test hands in the legacy build
     // instead, which is why the operation does not reach for one itself.
     openPdfjs: async (bytes) => {
-      const task = getPdfjs().getDocument({
-      data: new Uint8Array(bytes),
-      // A worker has no document.fonts, which is how pdf.js normally installs
-      // an embedded font before drawing with it. Without this it silently
-      // falls back to .notdef and every Thai glyph comes out as a box, while
-      // Latin survives on the standard fonts — so the failure looks like a
-      // font problem in the document rather than in us. True makes pdf.js
-      // draw the glyph outlines directly, which needs no DOM.
-      disableFontFace: true,
-    });
+      const task = getPdfjs().getDocument(workerDocumentOptions(bytes));
       const doc = await task.promise;
       return {
         doc,

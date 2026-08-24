@@ -19,6 +19,7 @@ import { runSplitChecks } from './split';
 import { runConvertChecks } from './convert';
 import { runCompressChecks } from './compress';
 import { runUnlockChecks } from './unlock';
+import { runWorkerChecks } from './workers';
 
 // the real job: the two Stripe documents that need the address fixed
 const JOB_DIR = path.join(
@@ -161,6 +162,7 @@ failures += await runSplitChecks();
 failures += await runConvertChecks();
 failures += await runCompressChecks();
 failures += await runUnlockChecks();
+failures += await runWorkerChecks();
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

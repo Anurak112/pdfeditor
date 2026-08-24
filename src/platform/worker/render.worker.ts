@@ -14,6 +14,7 @@
  * puts rasterising two threads away from the UI.
  */
 import { getPdfjs } from '../../lib/pdf/pdfjs';
+import { workerDocumentOptions } from '../../lib/pdf/workerDocument';
 import { readAllPages } from '../../lib/editor/replaceJob';
 import { countMatches } from '../../engine/operations/edit';
 import type { PageText } from '../../lib/pdf/textExtract';
@@ -86,16 +87,7 @@ async function docFor(jobId: string, bytes: Uint8Array) {
     openFor = null;
     textFor = null;
   }
-  const task = getPdfjs().getDocument({
-      data: new Uint8Array(bytes),
-      // A worker has no document.fonts, which is how pdf.js normally installs
-      // an embedded font before drawing with it. Without this it silently
-      // falls back to .notdef and every Thai glyph comes out as a box, while
-      // Latin survives on the standard fonts — so the failure looks like a
-      // font problem in the document rather than in us. True makes pdf.js
-      // draw the glyph outlines directly, which needs no DOM.
-      disableFontFace: true,
-    });
+  const task = getPdfjs().getDocument(workerDocumentOptions(bytes));
   const doc = await task.promise;
   openFor = { key: jobId, doc, task };
   return doc;
