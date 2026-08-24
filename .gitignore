@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-single/
+tests/out/
+output/
+
+# screenshots taken while testing — kept on disk, not in the repo
+*.png
