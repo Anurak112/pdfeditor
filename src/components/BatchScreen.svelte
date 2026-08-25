@@ -61,11 +61,11 @@
       <div class="fields">
         <label class="field">
           <span>ค้นหา</span>
-          <input type="text" class="mono" bind:value={batch.findText} placeholder="246/8" spellcheck="false" />
+          <input type="text" class="mono" bind:value={batch.findText} placeholder="123/45" spellcheck="false" />
         </label>
         <label class="field">
           <span>แทนที่ด้วย</span>
-          <input type="text" class="mono" bind:value={batch.replaceText} placeholder="135/7" spellcheck="false" />
+          <input type="text" class="mono" bind:value={batch.replaceText} placeholder="678/90" spellcheck="false" />
         </label>
       </div>
 

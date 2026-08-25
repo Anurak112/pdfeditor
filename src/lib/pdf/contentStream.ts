@@ -5,7 +5,7 @@
  * over the old number and drawing a new one on top (which leaves the original
  * string sitting in the text layer, still selectable and searchable), we find
  * the actual glyph codes in the page content stream and swap them in place.
- * The document then genuinely says 135/7.
+ * The document then genuinely says the new text.
  *
  * The walker keeps enough of a PDF interpreter — graphics state, text matrix,
  * spacing operators — to know *where on the page* every glyph lands. That is

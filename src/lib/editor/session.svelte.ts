@@ -34,8 +34,12 @@ export class EditorSession {
   pageCount = $state(0);
   currentPage = $state(1);
 
-  findText = $state('246/8');
-  replaceText = $state('135/7');
+  // Empty on purpose. These used to arrive pre-filled with the numbers from
+  // the job this tool was first written for, which is somebody's real
+  // address — and a find-and-replace that is already loaded when you open it
+  // is one stray click from an edit nobody asked for.
+  findText = $state('');
+  replaceText = $state('');
   /** Index within `hits` that Apply will act on; -1 means "not just one". */
   selectedHit = $state(-1);
   /** This page only, or every page in the file. */

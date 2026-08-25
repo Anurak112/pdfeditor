@@ -126,9 +126,9 @@ const th = {
   viewSingle: 'ทีละหน้า',
 
   editFind: 'ค้นหาข้อความ',
-  editFindHint: 'เช่น 246/8',
+  editFindHint: 'เช่น 123/45',
   editReplace: 'แทนที่ด้วย',
-  editReplaceHint: 'เช่น 135/7',
+  editReplaceHint: 'เช่น 678/90',
   editScope: 'ขอบเขต',
   editAllPages: 'ทุกหน้า',
   editThisPage: 'เฉพาะหน้าที่ระบุ',
@@ -340,9 +340,9 @@ const en: Dict = {
   viewSingle: 'One page',
 
   editFind: 'Find this text',
-  editFindHint: 'e.g. 246/8',
+  editFindHint: 'e.g. 123/45',
   editReplace: 'Replace it with',
-  editReplaceHint: 'e.g. 135/7',
+  editReplaceHint: 'e.g. 678/90',
   editScope: 'Where to look',
   editAllPages: 'Every page',
   editThisPage: 'One page only',
