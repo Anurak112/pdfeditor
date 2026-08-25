@@ -3,9 +3,9 @@
 # The test suite leans on real documents — a Thai bill, a locked company
 # certificate — which are somebody's actual invoices and are not in this
 # repository. On a runner they are simply absent, so those checks skip and say
-# so, by name, at the end of the run. A green tick here means 235 checks passed
+# so, by name, at the end of the run. A green tick here means 236 checks passed
 # and thirteen sets were skipped for want of files; on a machine that has them
-# the same command runs 393.
+# the same command runs 394.
 #
 # Build runs before the tests, which is not the usual order and is deliberate:
 # some of what the suite checks is the built site itself. dist/sw.js carries a
