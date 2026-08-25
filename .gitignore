@@ -6,3 +6,7 @@ output/
 
 # screenshots taken while testing — kept on disk, not in the repo
 *.png
+# …except the app's own icons, which have to ship. This rule already ate them
+# once: git add -A reported the folder as new, committed the two non-PNG files
+# in it, and said nothing about the four it skipped. CI caught it.
+!public/*.png
