@@ -49,15 +49,19 @@ const INDEX = './index.html';
  *
  * Vite marks the module script and the stylesheet `crossorigin`, so the browser
  * asks for those two in CORS mode, with an Origin header. The copies here were
- * fetched by the worker during install, with no Origin header at all. Hosts
- * answer static files with `Vary: Origin` — Vercel does, `vite preview` does —
- * and by the rules that makes the stored copy a non-match for the request the
- * page actually makes. Two cache misses, both for files sitting right there.
+ * fetched by the worker during install, with no Origin header at all. A host
+ * that answers static files with `Vary: Origin` therefore makes the stored copy
+ * a non-match for the request the page actually makes: two cache misses, both
+ * for files sitting right there.
  *
  * Online nobody would ever see it: a miss falls through to the network and the
  * page loads. Offline it is the whole app. The observed symptom was a correct
  * title over a blank page, with the JS and the CSS both ERR_FAILED and both
  * present in the cache.
+ *
+ * Measured, because the guess was wrong: `vite preview` sends `Vary: Origin`,
+ * Vercel does not. So the current host would not have shown this — but the
+ * dist/ artifact is meant to drop onto any static host, and the next one might.
  *
  * Ignoring Vary is safe here because every URL in this cache has exactly one
  * representation: the names are content hashes, and index.html is stored once.
