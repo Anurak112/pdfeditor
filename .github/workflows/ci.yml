@@ -4,7 +4,7 @@
 # certificate — which are somebody's actual invoices and are not in this
 # repository. On a runner they are simply absent, so those checks skip and say
 # so, by name, at the end of the run. A green tick here means 182 checks passed
-# and twelve sets were skipped for want of files; on a machine that has them the
+# and thirteen sets were skipped for want of files; on a machine that has them the
 # same command runs 332.
 #
 # The built site is uploaded on every run. Until there is somewhere to host it
@@ -22,9 +22,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # Matches the version this was developed and verified against. The
           # tests use zlib.crc32 and import.meta.dirname, so nothing below 22
@@ -56,7 +56,7 @@ jobs:
             echo "| $(basename $f) | ${raw} KB | ${gz} KB |" >> $GITHUB_STEP_SUMMARY
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: site
           path: dist
