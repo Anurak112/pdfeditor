@@ -3,9 +3,15 @@
 # The test suite leans on real documents — a Thai bill, a locked company
 # certificate — which are somebody's actual invoices and are not in this
 # repository. On a runner they are simply absent, so those checks skip and say
-# so, by name, at the end of the run. A green tick here means 182 checks passed
-# and thirteen sets were skipped for want of files; on a machine that has them the
-# same command runs 332.
+# so, by name, at the end of the run. A green tick here means 235 checks passed
+# and thirteen sets were skipped for want of files; on a machine that has them
+# the same command runs 393.
+#
+# Build runs before the tests, which is not the usual order and is deliberate:
+# some of what the suite checks is the built site itself. dist/sw.js carries a
+# literal list of every file to keep offline, and the only way to know that list
+# matches what was shipped is to have shipped it first. With the old order those
+# checks quietly skipped on every run.
 #
 # The built site is uploaded on every run. Until there is somewhere to host it
 # automatically, that artifact is the delivery: download dist.zip from any run
@@ -40,11 +46,11 @@ jobs:
       - name: svelte
         run: npx svelte-check --threshold error
 
-      - name: tests
-        run: npm test
-
       - name: build
         run: npm run build
+
+      - name: tests
+        run: npm test
 
       - name: what a first visit costs
         run: |
@@ -55,6 +61,9 @@ jobs:
             gz=$(( $(gzip -c "$f" | wc -c) / 1024 ))
             echo "| $(basename $f) | ${raw} KB | ${gz} KB |" >> $GITHUB_STEP_SUMMARY
           done
+          offline=$(( $(du -sb dist | cut -f1) / 1024 / 1024 ))
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Kept on the device for offline use: ~${offline} MB" >> $GITHUB_STEP_SUMMARY
 
       - uses: actions/upload-artifact@v7
         with:

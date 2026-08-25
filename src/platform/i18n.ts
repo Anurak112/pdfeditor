@@ -218,6 +218,12 @@ const th = {
   convertPageSize: 'ขนาดหน้ากระดาษ',
   convertFitImage: 'เท่าขนาดภาพ',
   convertMargin: 'ขอบ (มม.)',
+
+  updateTitle: 'มีเวอร์ชันใหม่แล้ว',
+  updateHint: 'โหลดหน้าใหม่เพื่อใช้เวอร์ชันล่าสุด — ไฟล์ที่เปิดค้างอยู่จะถูกล้าง',
+  updateApply: 'โหลดใหม่',
+  updateApplying: 'กำลังโหลดใหม่…',
+  updateLater: 'ไว้ก่อน',
 } as const;
 
 type Dict = Record<keyof typeof th, string>;
@@ -432,6 +438,12 @@ const en: Dict = {
   convertPageSize: 'Page size',
   convertFitImage: 'Match the image',
   convertMargin: 'Margin (mm)',
+
+  updateTitle: 'A new version is ready',
+  updateHint: 'Reload to switch to it — anything open right now is cleared',
+  updateApply: 'Reload',
+  updateApplying: 'Reloading…',
+  updateLater: 'Not now',
 };
 
 export const STRINGS: Record<Locale, Dict> = { th, en };

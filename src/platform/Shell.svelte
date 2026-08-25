@@ -9,6 +9,7 @@
   import LegacyEditor from '../App.svelte';
   import Header from './components/Header.svelte';
   import Home from './routes/Home.svelte';
+  import UpdateBanner from './components/UpdateBanner.svelte';
   import Workspace from './routes/Workspace.svelte';
   import { prefs } from './prefs.svelte';
   import { router } from './router.svelte';
@@ -31,6 +32,7 @@
 
 {#if route.name === 'legacy'}
   <div class="legacy-frame">
+    <UpdateBanner />
     <div class="legacy-bar">
       <button class="ghost" onclick={() => router.home()}>‹ {prefs.t('brand')}</button>
       <span>{prefs.t('legacyEditor')}</span>
@@ -41,6 +43,7 @@
   </div>
 {:else}
   <div class="shell">
+    <UpdateBanner />
     <Header
       title={tool ? prefs.pick(tool.name) : ''}
       onback={route.name === 'tool' ? () => router.home() : undefined}
