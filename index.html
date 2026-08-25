@@ -5,7 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Simple PDF</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>" />
+    <meta
+      name="description"
+      content="เครื่องมือ PDF 7 ตัวที่ทำงานในเบราว์เซอร์ทั้งหมด — ไฟล์ไม่เคยออกจากเครื่อง"
+    />
+
+    <!--
+      Relative, like every other asset here, so the page works under a path as
+      happily as at the root of a domain.
+    -->
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!--
+      The manifest's theme_color is one fixed value, used by the OS for things
+      like the task switcher. The bar at the top of an installed window is this,
+      and it follows the page instead — a violet strip above a dark page would
+      be the only part of the app that ignored the theme.
+    -->
+    <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0f16" media="(prefers-color-scheme: dark)" />
   </head>
   <body>
     <div id="app"></div>

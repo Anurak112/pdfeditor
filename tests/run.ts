@@ -20,6 +20,7 @@ import { runConvertChecks } from './convert';
 import { runCompressChecks } from './compress';
 import { runUnlockChecks } from './unlock';
 import { runWorkerChecks } from './workers';
+import { runPwaChecks } from './pwa';
 import { haveFixture, reportFixtureSkips } from './fixtures';
 
 // the real job: the two Stripe documents that need the address fixed
@@ -159,6 +160,7 @@ failures += await runConvertChecks();
 failures += await runCompressChecks();
 failures += await runUnlockChecks();
 failures += await runWorkerChecks();
+failures += await runPwaChecks();
 
 reportFixtureSkips();
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);

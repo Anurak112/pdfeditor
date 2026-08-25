@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Simple PDF">
+  <!--
+    A page with an oversized dog-ear, and two lines of text where the second has
+    been swapped for a shorter one in the accent colour.
+
+    The fold is what reads as "document" at sixteen pixels. The swap is the part
+    that could not sit on any other document app: this tool changes the glyphs
+    in the file rather than painting over them, and the replacement being
+    shorter than the original is the case it handles that the others do not.
+  -->
+  <rect width="512" height="512" rx="112" fill="#5b4be8"/>
+  <path d="M150 108 H288 L364 184 V404 H150 Z" fill="#ffffff" stroke="#ffffff" stroke-width="30" stroke-linejoin="round"/>
+  <path d="M288 108 L364 184 H288 Z" fill="#c9c2f7" stroke="#c9c2f7" stroke-width="18" stroke-linejoin="round"/>
+  <rect x="188" y="248" width="138" height="28" rx="14" fill="#b9bed2"/>
+  <rect x="188" y="304" width="88" height="28" rx="14" fill="#5b4be8"/>
+</svg>
