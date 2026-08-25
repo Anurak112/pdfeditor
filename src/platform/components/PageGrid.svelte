@@ -415,9 +415,18 @@
     padding: var(--space-1);
     /* The browser's own windowing: tiles outside the viewport are not laid out
        or painted, which is what keeps a 900-page grid scrollable. The intrinsic
-       size keeps the scrollbar from jumping as they come and go. */
+       size keeps the scrollbar from jumping as they come and go.
+
+       Height only. `contain-intrinsic-size: auto 170px` also declared a 170px
+       *width*, which a skipped tile then reported as its min-content — and a
+       1fr track cannot shrink below its min-content, so two tiles insisted on
+       368px inside a 343px column and the whole page scrolled sideways on a
+       phone. The height is the part that was ever wanted. */
     content-visibility: auto;
-    contain-intrinsic-size: auto 170px;
+    contain-intrinsic-height: auto 170px;
+    /* A grid item defaults to min-width:auto, which is the other half of the
+       same trap. */
+    min-width: 0;
   }
   .tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 

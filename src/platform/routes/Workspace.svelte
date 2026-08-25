@@ -99,6 +99,33 @@
     moreInput?.click();
   }
 
+  /**
+   * On a phone, follow the work.
+   *
+   * The panel is a sidebar on a wide screen and always in view. Stacked under
+   * the page grid it is not: a run finishes, the result appears two screens
+   * down, and the screen the user is looking at does not change at all. So when
+   * a run ends on a narrow layout, the panel is brought to them.
+   */
+  let panelEl = $state<HTMLElement | undefined>();
+  $effect(() => {
+    if (session.stage !== 'done' && session.stage !== 'failed') return;
+    if (typeof matchMedia !== 'function' || matchMedia('(min-width: 1024px)').matches) return;
+
+    const panel = panelEl;
+    if (!panel) return;
+    // Already looking at it — moving the page under someone for no reason is
+    // worse than not moving it.
+    if (panel.getBoundingClientRect().top < innerHeight * 0.6) return;
+
+    // Not 'smooth'. Smooth scrolling is animated by the compositor, and in a
+    // tab that is throttled or not painting it does not fall back to jumping —
+    // it does nothing at all, silently, which is how this was written the first
+    // time and why the result stayed off screen. An instant scroll to a defined
+    // destination always happens.
+    panel.scrollIntoView({ behavior: 'auto', block: 'start' });
+  });
+
   function onErrorAction(action: RecoveryAction) {
     if (action.kind === 'goto-tool' && action.toolId) {
       session.selectTool(action.toolId);
@@ -117,7 +144,7 @@
   }
 </script>
 
-<div class="workspace">
+<div class="workspace" class:has-runbar={session.stage !== 'running' && session.stage !== 'done'}>
   <!-- left: the material -->
   <div class="stage">
     {#if session.files.length === 0}
@@ -199,7 +226,7 @@
   </div>
 
   <!-- right: the settings and the button -->
-  <aside class="panel">
+  <aside class="panel" bind:this={panelEl}>
     <div class="panel-head">
       <h2>{prefs.pick(tool.name)}</h2>
       <LaneBadge lane={tool.lane} />
@@ -268,6 +295,15 @@
     margin: 0 auto;
     padding: var(--space-6) var(--space-5) var(--space-8);
     align-items: start;
+  }
+
+  /*
+   * Room for the run bar, which pins itself to the bottom edge below this
+   * breakpoint. Only while it is actually on screen — after a run it unmounts,
+   * and reserving space for something that is not there is just a hole.
+   */
+  @media (max-width: 1023px) {
+    .workspace.has-runbar { padding-bottom: 132px; }
   }
 
   @media (min-width: 1024px) {

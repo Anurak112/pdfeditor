@@ -48,6 +48,32 @@
     border-top: 1px solid var(--border);
   }
 
+  /*
+   * On a phone the settings panel stops being a sidebar and stacks under the
+   * page grid, which put this button 1,464px down an 832px screen: you loaded a
+   * file, and the thing that does the work was two screens below the fold with
+   * nothing on screen to suggest it was there.
+   *
+   * Below the sidebar breakpoint it becomes what every phone app uses for a
+   * primary action — a bar pinned to the bottom edge. Workspace adds matching
+   * bottom padding so the last row of the grid still scrolls clear of it; the
+   * two are a pair, and each says so.
+   */
+  @media (max-width: 1023px) {
+    .bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      padding: var(--space-3) var(--space-5);
+      /* Clears the home indicator on an iPhone; zero everywhere else. */
+      padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+      box-shadow: 0 -2px 14px rgb(0 0 0 / 0.1);
+    }
+  }
+
   .line {
     margin: 0;
     font-size: var(--fs-2);
