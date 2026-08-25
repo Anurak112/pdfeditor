@@ -5,9 +5,10 @@
  * because the page grid already existed. That was the bet when the grid was
  * built before any tool that needed it, and this is where it pays.
  */
-import { PDFDocument, degrees } from 'pdf-lib';
+import { degrees } from 'pdf-lib';
 import { appError, appWarning } from '../errors';
 import { openSources } from '../document';
+import { blankDocument, carryInfo } from '../metadata';
 import { asPdfName, stem } from '../naming';
 import { span } from '../types';
 import type { JobFile, OperationContext, OperationResult, PdfOperation } from '../types';
@@ -81,7 +82,7 @@ async function run(files: JobFile[], options: OrganizeOptions, ctx: OperationCon
   }
 
   ctx.throwIfAborted();
-  const out = await PDFDocument.create();
+  const out = await blankDocument();
 
   // Copied in one call rather than page by page: pdf-lib deduplicates shared
   // resources across a single copyPages, and fonts are almost always shared.
@@ -114,8 +115,9 @@ async function run(files: JobFile[], options: OrganizeOptions, ctx: OperationCon
     ctx.warn(appWarning('W_BOOKMARKS_DROPPED'));
   }
 
-  out.setProducer('Simple PDF');
-  out.setCreator('Simple PDF');
+  // Same document, pages rearranged — so its description and the program that
+  // authored it come along, and only /Producer becomes ours.
+  carryInfo(out, source.doc, { creationDate: true });
 
   ctx.onProgress(94, { th: 'กำลังเขียนไฟล์', en: 'Writing the file' });
   const bytes = await out.save({ useObjectStreams: true });

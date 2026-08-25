@@ -53,6 +53,29 @@ async function pagesOf(bytes: Uint8Array): Promise<string[]> {
   return out;
 }
 
+/** The day the imaginary certificate below was issued. */
+const ISSUED_ON = new Date(Date.UTC(2019, 4, 17, 9, 30, 0));
+
+/** Ten pages that say who issued them, and when. */
+async function issued(): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  for (let i = 1; i <= 10; i++) {
+    pdf.addPage([300, 400]).drawText(`PAGE ${i}`, { x: 30, y: 340, size: 26, font });
+  }
+  pdf.setTitle('หนังสือรับรองการจดทะเบียน');
+  pdf.setAuthor('กรมพัฒนาธุรกิจการค้า');
+  pdf.setCreator('ระบบออกเอกสาร e-Certificate');
+  pdf.setProducer('เครื่องพิมพ์ของกรมพัฒนาธุรกิจการค้า');
+  pdf.setCreationDate(ISSUED_ON);
+  return pdf.save();
+}
+
+/** PDF dates are written to the second, so compare them at that resolution. */
+function sameSecond(a: Date | undefined, b: Date): boolean {
+  return a !== undefined && Math.floor(a.getTime() / 1000) === Math.floor(b.getTime() / 1000);
+}
+
 /** Each output as "PAGE 1+PAGE 2", so a whole plan fits on one line. */
 async function shape(outputs: OutputFile[]): Promise<string> {
   const parts: string[] = [];
@@ -218,6 +241,41 @@ export async function runSplitChecks(): Promise<number> {
     check('บอกว่าสารบัญไม่ติดไปด้วย',
       ctx.warnings.some((w) => w.code === 'W_BOOKMARKS_DROPPED'),
       ctx.warnings.map((w) => w.code).join(' '));
+  }
+
+  // --- whose document this is ----------------------------------------------
+  //
+  // A chapter cut out of a certificate is still that certificate's pages,
+  // issued by whoever issued them. /Creator says who that was; only /Producer
+  // is ours. And it has to hold for every piece, not just the first one out.
+  {
+    const cert: JobFile = { id: 'cert', name: 'certificate.pdf', bytes: await issued() };
+    const r = await splitOperation.run(
+      [cert],
+      opts({ mode: 'every-n', everyN: 4, zipWhenMultiple: false }),
+      ctxWith(),
+    );
+    const outs = await Promise.all(
+      r.files.map((f) => PDFDocument.load(f.bytes, { updateMetadata: false })),
+    );
+
+    check('ตัดเป็นหลายไฟล์: ทุกไฟล์เก็บชื่อระบบที่ออกเอกสารไว้',
+      outs.length === 3 && outs.every((d) => d.getCreator() === 'ระบบออกเอกสาร e-Certificate'),
+      outs.map((d) => String(d.getCreator())).join(' | '));
+    check('ตัดเป็นหลายไฟล์: ทุกไฟล์บอกว่าเราเป็นคนเขียนไฟล์ (/Producer)',
+      outs.every((d) => d.getProducer() === 'Simple PDF'),
+      outs.map((d) => String(d.getProducer())).join(' | '));
+    check('ตัดแล้วชื่อเรื่องกับผู้แต่งยังติดไปทุกไฟล์',
+      outs.every((d) => d.getTitle() === 'หนังสือรับรองการจดทะเบียน' &&
+        d.getAuthor() === 'กรมพัฒนาธุรกิจการค้า'),
+      outs.map((d) => String(d.getTitle())).join(' | '));
+    check('ตัดแล้ววันที่สร้างยังเป็นวันที่ออกเอกสาร',
+      outs.every((d) => sameSecond(d.getCreationDate(), ISSUED_ON)),
+      outs.map((d) => String(d.getCreationDate())).join(' | '));
+    check('ไม่มีชื่อ pdf-lib โผล่ในไฟล์ไหนเลย',
+      outs.every((d) => !(d.getProducer() ?? '').includes('pdf-lib') &&
+        !(d.getCreator() ?? '').includes('pdf-lib')),
+      outs.map((d) => `${d.getProducer()}/${d.getCreator()}`).join(' | '));
   }
 
   // --- through the job layer ------------------------------------------------

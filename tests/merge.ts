@@ -63,6 +63,22 @@ async function numberedPdf(pages: number): Promise<Uint8Array> {
   return pdf.save();
 }
 
+/** The day the imaginary first-file document below was authored. */
+const AUTHORED_ON = new Date(Date.UTC(2019, 4, 17, 9, 30, 0));
+
+/** A one-page document that says who wrote it and what it is. */
+async function describedPdf(label: string, creator: string): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  pdf.addPage([300, 400]);
+  pdf.setTitle(`ชื่อเรื่องของ${label}`);
+  pdf.setAuthor(`ผู้แต่งของ${label}`);
+  pdf.setSubject(`หัวเรื่องของ${label}`);
+  pdf.setCreator(creator);
+  pdf.setProducer(`เครื่องพิมพ์ของ${label}`);
+  pdf.setCreationDate(AUTHORED_ON);
+  return pdf.save();
+}
+
 async function textOfPage(doc: Awaited<ReturnType<typeof openWithPdfjs>>, n: number): Promise<string> {
   const content = await (await doc.getPage(n)).getTextContent();
   return content.items.map((i) => (i as { str?: string }).str ?? '').join('');
@@ -216,6 +232,51 @@ export async function runMergeChecks(): Promise<number> {
     const doc = await openWithPdfjs(result.files[0].bytes);
     const outline = await doc.getOutline();
     check('ปิดสารบัญแล้วไม่มีสารบัญ', !outline || outline.length === 0);
+  }
+
+  // --- what "take them from the first file" actually takes -----------------
+  //
+  // /Creator is one of the document's details, so 'first' carries it like the
+  // rest. /Producer is not — that is the program that wrote these bytes, which
+  // is this app no matter whose document went in.
+  {
+    const described: JobFile[] = [
+      { id: 'd1', name: 'first.pdf', bytes: await describedPdf('ไฟล์แรก', 'ระบบออกเอกสาร e-Certificate') },
+      { id: 'd2', name: 'second.pdf', bytes: await describedPdf('ไฟล์สอง', 'โปรแกรมอื่น') },
+    ];
+    const before = Date.now();
+
+    const first = await PDFDocument.load(
+      (await mergeOperation.run(described, opts({ keepMetadata: 'first' }), quietCtx())).files[0].bytes,
+      { updateMetadata: false },
+    );
+    check('เอาข้อมูลจากไฟล์แรก: /Creator มาจากไฟล์แรกด้วย',
+      first.getCreator() === 'ระบบออกเอกสาร e-Certificate', String(first.getCreator()));
+    check('เอาข้อมูลจากไฟล์แรก: ชื่อเรื่องกับผู้แต่งมาจากไฟล์แรก',
+      first.getTitle() === 'ชื่อเรื่องของไฟล์แรก' && first.getAuthor() === 'ผู้แต่งของไฟล์แรก',
+      `${first.getTitle()} / ${first.getAuthor()}`);
+    check('แต่ /Producer เป็นของเรา ไม่ใช่ของไฟล์แรก',
+      first.getProducer() === 'Simple PDF', String(first.getProducer()));
+    // A merged file is a compilation that did not exist until now. Its
+    // description can come from file one; the day it was made cannot.
+    check('วันที่สร้างคือวันที่รวมไฟล์ ไม่ใช่วันที่ของไฟล์แรก',
+      (first.getCreationDate()?.getTime() ?? 0) >= before - 1000,
+      String(first.getCreationDate()));
+
+    const none = await PDFDocument.load(
+      (await mergeOperation.run(described, opts({ keepMetadata: 'none' }), quietCtx())).files[0].bytes,
+      { updateMetadata: false },
+    );
+    check('ไม่เอาเลย: ไม่มีชื่อเรื่อง ผู้แต่ง หัวเรื่อง',
+      none.getTitle() === undefined && none.getAuthor() === undefined && none.getSubject() === undefined,
+      `${none.getTitle()} / ${none.getAuthor()} / ${none.getSubject()}`);
+    check('ไม่เอาเลย: ไม่อ้างว่าเราเป็นคนแต่ง — ไม่มี /Creator',
+      none.getCreator() === undefined, String(none.getCreator()));
+    check('ไม่เอาเลย: /Producer ยังบอกว่าเราเขียนไฟล์',
+      none.getProducer() === 'Simple PDF', String(none.getProducer()));
+    check('ไม่เอาเลย: ไม่มีชื่อ pdf-lib หลุดเข้ามาแทน',
+      !(none.getProducer() ?? '').includes('pdf-lib') && !(none.getCreator() ?? '').includes('pdf-lib'),
+      `${none.getProducer()} / ${none.getCreator()}`);
   }
 
   // --- cancelling -----------------------------------------------------------

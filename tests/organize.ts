@@ -8,7 +8,7 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { PDFDocument, StandardFonts, degrees } from 'pdf-lib';
+import { PDFDict, PDFDocument, PDFName, PDFString, StandardFonts, degrees } from 'pdf-lib';
 import {
   organizeOperation,
   ORGANIZE_DEFAULTS,
@@ -61,6 +61,47 @@ async function pagesOf(bytes: Uint8Array): Promise<string[]> {
     out.push(c.items.map((i) => (i as { str?: string }).str ?? '').join('').trim());
   }
   return out;
+}
+
+/** The day the imaginary certificate below was issued. */
+const ISSUED_ON = new Date(Date.UTC(2019, 4, 17, 9, 30, 0));
+
+/**
+ * A document that says who issued it, the way a real certificate does.
+ *
+ * Producer and Creator are deliberately different here, because that is the
+ * pair the tools used to flatten into one name.
+ */
+async function issued(): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  pdf.addPage([300, 400]);
+  pdf.setTitle('หนังสือรับรองการจดทะเบียน');
+  pdf.setAuthor('กรมพัฒนาธุรกิจการค้า');
+  pdf.setSubject('ทะเบียนนิติบุคคล');
+  pdf.setKeywords(['หนังสือรับรอง, นิติบุคคล']);
+  pdf.setCreator('ระบบออกเอกสาร e-Certificate');
+  pdf.setProducer('เครื่องพิมพ์ของกรมพัฒนาธุรกิจการค้า');
+  pdf.setCreationDate(ISSUED_ON);
+  return pdf.save();
+}
+
+/** PDF dates are written to the second, so compare them at that resolution. */
+function sameSecond(a: Date | undefined, b: Date): boolean {
+  return a !== undefined && Math.floor(a.getTime() / 1000) === Math.floor(b.getTime() / 1000);
+}
+
+/**
+ * The information dictionary as a *different* library sees it.
+ *
+ * pdf-lib wrote these strings, so pdf-lib agreeing they are there proves very
+ * little. Thai in the info dictionary has to go in as UTF-16 with a byte-order
+ * mark, and a mistake there reads back perfectly in the library that made it.
+ */
+async function infoOf(bytes: Uint8Array): Promise<Record<string, string>> {
+  const doc = (await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise) as unknown as {
+    getMetadata(): Promise<{ info: Record<string, string> }>;
+  };
+  return (await doc.getMetadata()).info;
 }
 
 async function rotationsOf(bytes: Uint8Array): Promise<number[]> {
@@ -172,6 +213,73 @@ export async function runOrganizeChecks(): Promise<number> {
     check('ลบหน้าแล้วบอกว่าสารบัญหาย ไม่ปล่อยให้ไปเจอเอง',
       ctx.warnings.some((w) => w.code === 'W_BOOKMARKS_DROPPED'),
       ctx.warnings.map((w) => w.code).join(' '));
+  }
+
+  // --- whose document this is ----------------------------------------------
+  //
+  // /Producer is the program that wrote the file — us. /Creator is the program
+  // that authored the content, and turning a page sideways does not make that
+  // us. Overwriting it used to lose the name of the system that issued the
+  // document, silently, in a file that still opened fine.
+  {
+    const before = Date.now();
+    const cert: JobFile = { id: 'cert', name: 'certificate.pdf', bytes: await issued() };
+    const result = await organizeOperation.run([cert], opts({ rotations: { 0: 90 } }), ctxWith());
+    const out = await PDFDocument.load(result.files[0].bytes, { updateMetadata: false });
+
+    check('หมุนหน้าแล้ว ชื่อระบบที่ออกเอกสารยังอยู่ (/Creator ไม่ถูกทับ)',
+      out.getCreator() === 'ระบบออกเอกสาร e-Certificate', String(out.getCreator()));
+    check('แต่ชื่อโปรแกรมที่เขียนไฟล์เป็นของเรา (/Producer)',
+      out.getProducer() === 'Simple PDF', String(out.getProducer()));
+    check('ชื่อเรื่อง ผู้แต่ง หัวเรื่อง ติดไปด้วย',
+      out.getTitle() === 'หนังสือรับรองการจดทะเบียน' &&
+        out.getAuthor() === 'กรมพัฒนาธุรกิจการค้า' &&
+        out.getSubject() === 'ทะเบียนนิติบุคคล',
+      `${out.getTitle()} / ${out.getAuthor()} / ${out.getSubject()}`);
+    check('คำสำคัญข้ามมาครบ ไม่ถูกตัดจุลภาคทิ้ง',
+      out.getKeywords() === 'หนังสือรับรอง, นิติบุคคล', String(out.getKeywords()));
+    check('วันที่สร้างยังเป็นวันที่ออกเอกสาร ไม่ใช่วันนี้',
+      sameSecond(out.getCreationDate(), ISSUED_ON), String(out.getCreationDate()));
+    check('วันที่แก้ไขคือตอนนี้ เพราะเราเพิ่งแก้',
+      (out.getModificationDate()?.getTime() ?? 0) >= before - 1000,
+      String(out.getModificationDate()));
+    check('ไม่มีชื่อ pdf-lib โผล่ในไฟล์ที่ส่งออก',
+      !(out.getProducer() ?? '').includes('pdf-lib') && !(out.getCreator() ?? '').includes('pdf-lib'),
+      `${out.getProducer()} / ${out.getCreator()}`);
+
+    const info = await infoOf(result.files[0].bytes);
+    check('ผู้อ่านอีกตัว (pdf.js) เห็น /Creator กับ /Producer ตรงกัน',
+      info.Creator === 'ระบบออกเอกสาร e-Certificate' && info.Producer === 'Simple PDF',
+      `${info.Creator} / ${info.Producer}`);
+    check('ผู้อ่านอีกตัวอ่านชื่อเรื่องภาษาไทยได้ไม่เพี้ยน',
+      info.Title === 'หนังสือรับรองการจดทะเบียน', String(info.Title));
+  }
+
+  // --- a source whose own metadata is broken -------------------------------
+  //
+  // pdf-lib throws on a date string it cannot parse, and files in the wild do
+  // carry them. Reading metadata must never turn "rotate this page" into
+  // "could not open your file" — the bad field is skipped, the rest travel.
+  {
+    const pdf = await PDFDocument.create();
+    pdf.addPage([300, 400]);
+    pdf.setCreator('ระบบเก่าที่เขียนวันที่ผิดรูปแบบ');
+    pdf.setCreationDate(new Date());
+    const info = pdf.context.lookup(pdf.context.trailerInfo.Info, PDFDict);
+    info.set(PDFName.of('CreationDate'), PDFString.of('เมื่อวานนี้'));
+
+    const broken: JobFile = { id: 'bad', name: 'broken-date.pdf', bytes: await pdf.save() };
+    let caught: unknown = null;
+    let out: PDFDocument | null = null;
+    try {
+      const result = await organizeOperation.run([broken], opts({ rotations: { 0: 90 } }), ctxWith());
+      out = await PDFDocument.load(result.files[0].bytes, { updateMetadata: false });
+    } catch (e) {
+      caught = e;
+    }
+    check('วันที่เสียในต้นฉบับไม่ทำให้งานล้ม', caught === null, String(caught));
+    check('และช่องอื่นยังข้ามมาได้ตามปกติ',
+      out?.getCreator() === 'ระบบเก่าที่เขียนวันที่ผิดรูปแบบ', String(out?.getCreator()));
   }
 
   // --- through the job layer ------------------------------------------------

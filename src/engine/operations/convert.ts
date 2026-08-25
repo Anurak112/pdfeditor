@@ -8,8 +8,8 @@
  * cannot be done honestly in a browser at all, which is why it is absent here
  * rather than half-present.
  */
-import { PDFDocument } from 'pdf-lib';
 import { appError, appWarning } from '../errors';
+import { blankDocument, stampAuthored } from '../metadata';
 import { asPdfName, fillPattern, sanitiseFilename, stem } from '../naming';
 import { readAllPages } from '../../lib/editor/replaceJob';
 import { textOfPages } from '../text';
@@ -239,7 +239,7 @@ async function imagesToPdf(
   options: ConvertOptions,
   ctx: OperationContext,
 ): Promise<OutputFile[]> {
-  const pdf = await PDFDocument.create();
+  const pdf = await blankDocument();
   const at = span(5, 90);
   const margin = Math.max(0, options.imageMarginMm) * MM;
 
@@ -272,8 +272,9 @@ async function imagesToPdf(
     page.drawImage(image, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
   }
 
-  pdf.setProducer('Simple PDF');
-  pdf.setCreator('Simple PDF');
+  // The one place Creator really is us: these pages did not exist as a document
+  // before this ran — they were loose images.
+  stampAuthored(pdf);
 
   ctx.onProgress(94, { th: 'กำลังเขียนไฟล์', en: 'Writing the file' });
   const name = asPdfName(sanitiseFilename(stem(files[0].name)) + (files.length > 1 ? '-รวมภาพ' : ''));

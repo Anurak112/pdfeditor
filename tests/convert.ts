@@ -215,6 +215,16 @@ export async function runConvertChecks(): Promise<number> {
     check('ภาพ → PDF: หนึ่งภาพหนึ่งหน้า', doc.getPageCount() === 2, String(doc.getPageCount()));
     check('ภาพ → PDF: ได้ไฟล์ PDF เดียว', fit.files.length === 1 && fit.files[0].mimeType === 'application/pdf');
 
+    // The one tool where /Creator really is this app: loose images were not a
+    // document until this ran. Merge, Split and Organize only rearrange a
+    // document somebody else authored, and must not claim the same thing.
+    // Reopened with updateMetadata off, or pdf-lib stamps its own name on the
+    // way in and the check would be reading its own handwriting.
+    const authored = await PDFDocument.load(fit.files[0].bytes, { updateMetadata: false });
+    check('ภาพ → PDF: เราเป็นทั้งคนแต่งและคนเขียนไฟล์',
+      authored.getCreator() === 'Simple PDF' && authored.getProducer() === 'Simple PDF',
+      `${authored.getCreator()} / ${authored.getProducer()}`);
+
     // "Match the image" must actually match it, not letterbox onto a default.
     const first = doc.getPage(0).getSize();
     const source = await PDFDocument.create();

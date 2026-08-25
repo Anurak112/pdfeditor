@@ -7,10 +7,11 @@
  * Organize need the same things and three near-identical copies is how a fix in
  * one of them fails to reach the other two.
  */
-import { PDFDocument } from 'pdf-lib';
+import type { PDFDocument } from 'pdf-lib';
 import { appWarning } from '../errors';
 import { openSources, pageTotal } from '../document';
 import type { OpenedSource } from '../document';
+import { blankDocument, carryInfo } from '../metadata';
 import { asPdfName, stem } from '../naming';
 import { writeOutline } from '../outline';
 import type { OutlineEntry } from '../outline';
@@ -24,6 +25,12 @@ export interface MergeOptions {
   pageRanges: Record<string, string>;
   addBookmarks: boolean;
   pageSize: 'keep' | 'first' | 'a4';
+  /**
+   * Where the output's document details come from. 'first' takes them — title,
+   * author, subject, keywords, and /Creator, the program that authored the
+   * content — from the first file; 'none' leaves the lot out. /Producer says
+   * this app either way, because this app is what wrote the bytes.
+   */
   keepMetadata: 'first' | 'none';
   outputName: string;
 }
@@ -46,7 +53,7 @@ async function run(files: JobFile[], options: MergeOptions, ctx: OperationContex
   );
 
   ctx.throwIfAborted();
-  const out = await PDFDocument.create();
+  const out = await blankDocument();
 
   // "Keep" copies pages whole, which preserves links and annotations. The
   // fixed-size modes have to redraw each page onto a new one, and that is a
@@ -77,7 +84,11 @@ async function run(files: JobFile[], options: MergeOptions, ctx: OperationContex
   }
 
   ctx.throwIfAborted();
-  carryMetadata(out, sources, options.keepMetadata);
+  // No creation date carried across, even under 'first': the merged file is a
+  // compilation that did not exist until now, and dating it 2019 because its
+  // first chapter was written in 2019 would be a fact about a different
+  // document. The single-source tools do carry it — see carryInfo.
+  carryInfo(out, options.keepMetadata === 'first' ? sources[0].source.doc : null);
   if (options.addBookmarks) writeOutline(out, bookmarks);
 
   ctx.onProgress(96, { th: 'กำลังเขียนไฟล์', en: 'Writing the file' });
@@ -125,22 +136,6 @@ async function redraw(
     n++;
   }
   return n;
-}
-
-function carryMetadata(out: PDFDocument, sources: OpenedSource[], mode: MergeOptions['keepMetadata']) {
-  if (mode === 'first') {
-    const first = sources[0].source.doc;
-    const title = first.getTitle();
-    const author = first.getAuthor();
-    const subject = first.getSubject();
-    const keywords = first.getKeywords();
-    if (title) out.setTitle(title);
-    if (author) out.setAuthor(author);
-    if (subject) out.setSubject(subject);
-    if (keywords) out.setKeywords(keywords.split(/[,;]\s*/).filter(Boolean));
-  }
-  out.setProducer('Simple PDF');
-  out.setCreator('Simple PDF');
 }
 
 export const mergeOperation: PdfOperation<MergeOptions> = { id: 'merge', run };

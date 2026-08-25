@@ -7,9 +7,9 @@
  * pages I do not want. One text box asking for "1-5, 6-12" can only express the
  * fourth, and only if you already know what is on those pages.
  */
-import { PDFDocument } from 'pdf-lib';
 import { appError, appWarning } from '../errors';
 import { openSources } from '../document';
+import { blankDocument, carryInfo } from '../metadata';
 import { asPdfName, fillPattern, sanitiseFilename, stem } from '../naming';
 import { parseRangeGroups } from '../ranges';
 import { createZip } from '../../lib/utils/zip';
@@ -133,11 +133,13 @@ async function run(files: JobFile[], options: SplitOptions, ctx: OperationContex
       en: `Building file ${g + 1} of ${plan.groups.length}`,
     });
 
-    const out = await PDFDocument.create();
+    const out = await blankDocument();
     const copied = await out.copyPages(source.doc, plan.groups[g]);
     for (const page of copied) out.addPage(page);
-    out.setProducer('Simple PDF');
-    out.setCreator('Simple PDF');
+    // Every piece keeps the whole document's description and the program that
+    // authored it. A chapter cut out of a certificate is still that
+    // certificate's pages, issued by whoever issued them.
+    carryInfo(out, source.doc, { creationDate: true });
 
     const name =
       plan.groups.length === 1
