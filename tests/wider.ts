@@ -8,6 +8,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
+import { haveFixture } from './fixtures';
 import path from 'node:path';
 import { extractPageText, findOnPage, type PageText, type PdfTextItem } from '../src/lib/pdf/textExtract';
 import { buildEditedPdf } from '../src/lib/pdf/exporter';
@@ -68,10 +69,7 @@ export async function runWiderFixtures(): Promise<number> {
   };
 
   for (const fx of WIDER_FIXTURES) {
-    if (!fs.existsSync(fx.file)) {
-      console.log(`\nSKIP (ไม่มีไฟล์ทดสอบ) ${path.basename(fx.file)}`);
-      continue;
-    }
+    if (!haveFixture(fx.file, `เอกสารกว้าง: ${path.basename(fx.file)}`)) continue;
     console.log(`\n=== ${path.basename(fx.file)} : ทั้งไฟล์ "${fx.find}" -> "${fx.replace}" ===`);
     console.log(`  (${fx.note})`);
 
@@ -140,11 +138,7 @@ async function checkPushMode(): Promise<number> {
   };
 
   const file = WIDER_FIXTURES[0].file;
-  if (!fs.existsSync(file)) {
-    console.log(`
-SKIP (ไม่มีไฟล์ทดสอบ) โหมดดันข้อความ`);
-    return 0;
-  }
+  if (!haveFixture(file, 'โหมดดันข้อความ')) return 0;
 
   const find = '135/7';
   const replace = '1234/56';

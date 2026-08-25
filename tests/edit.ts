@@ -8,6 +8,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
+import { haveFixture } from './fixtures';
 import path from 'node:path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { editOperation, EDIT_DEFAULTS, countMatches, type EditOptions } from '../src/engine/operations/edit';
@@ -116,7 +117,7 @@ export async function runEditChecks(): Promise<number> {
 
   // --- the claim, on a real Stripe invoice ---------------------------------
   const stripe = path.join(JOB, 'ใบแจ้งหนี้งานจริง.pdf');
-  if (fs.existsSync(stripe)) {
+  if (haveFixture(stripe, 'แก้ข้อความ: ใบแจ้งหนี้ Stripe')) {
     const file: JobFile = { id: 's', name: 'ใบแจ้งหนี้งานจริง.pdf', bytes: new Uint8Array(fs.readFileSync(stripe)) };
     const ctx = ctxWith();
     const result = await editOperation.run([file], opts({ find: '246/8', replace: '135/7' }), ctx);
@@ -139,7 +140,7 @@ export async function runEditChecks(): Promise<number> {
   // between runs, so a hardcoded address value goes stale and the test starts
   // reporting an engine failure for a fixture that simply moved on.
   const thai = path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf');
-  if (fs.existsSync(thai)) {
+  if (haveFixture(thai, 'แก้ข้อความ: ใบวางบิลไทย')) {
     const file: JobFile = { id: 't', name: 'ใบวางบิลไทย.pdf', bytes: new Uint8Array(fs.readFileSync(thai)) };
     const before = await textOf(file.bytes);
     check('ใบวางบิลไทย: มีเลขที่ใบวางบิลให้แก้', before.includes('INV-0000-000'));

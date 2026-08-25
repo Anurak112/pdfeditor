@@ -13,7 +13,9 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
+import { haveFixture } from './fixtures';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import {
   convertOperation,
@@ -32,7 +34,6 @@ const HOME = process.env.USERPROFILE ?? process.env.HOME ?? '.';
 const DOWNLOADS = path.join(HOME, 'Downloads');
 const JOB = path.join(DOWNLOADS, 'โฟลเดอร์งาน', 'production001');
 const OUT = path.join(import.meta.dirname, 'out');
-const REPO = path.join(import.meta.dirname, '..');
 
 const openPdfjs: PdfjsOpener = async (bytes) => {
   const task = pdfjsLib.getDocument({ data: new Uint8Array(bytes) });
@@ -53,6 +54,54 @@ function ctxWith(): OperationContext & { warnings: AppError[] } {
 
 function opts(patch: Partial<ConvertOptions> = {}): ConvertOptions {
   return { ...CONVERT_DEFAULTS, ...patch };
+}
+
+/**
+ * A real PNG, built here rather than found on disk.
+ *
+ * Four chunks and a CRC each, which is less code than it sounds and buys
+ * something worth having: the images-to-PDF checks used to load two screenshots
+ * from the repo root, and screenshots are gitignored, so the block never ran
+ * anywhere. Two rectangles of known and deliberately different shapes let the
+ * page-size assertions mean something.
+ */
+function tinyPng(width: number, height: number, rgb: [number, number, number]): Uint8Array {
+  const chunk = (type: string, body: Buffer): Buffer => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(body.length);
+    const typed = Buffer.concat([Buffer.from(type, 'latin1'), body]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(zlib.crc32(typed) >>> 0);
+    return Buffer.concat([length, typed, crc]);
+  };
+
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8; // bit depth
+  header[9] = 2; // truecolour
+  // 10, 11, 12: deflate, adaptive filtering, no interlace — all zero already
+
+  // One filter byte per scanline, then the pixels.
+  const raw = Buffer.alloc(height * (1 + width * 3));
+  for (let y = 0; y < height; y++) {
+    const at = y * (1 + width * 3);
+    raw[at] = 0;
+    for (let x = 0; x < width; x++) {
+      raw[at + 1 + x * 3] = rgb[0];
+      raw[at + 2 + x * 3] = rgb[1];
+      raw[at + 3 + x * 3] = rgb[2];
+    }
+  }
+
+  return new Uint8Array(
+    Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk('IHDR', header),
+      chunk('IDAT', zlib.deflateSync(raw)),
+      chunk('IEND', Buffer.alloc(0)),
+    ]),
+  );
 }
 
 async function pagesTextOf(bytes: Uint8Array) {
@@ -85,7 +134,7 @@ export async function runConvertChecks(): Promise<number> {
 
   // --- the Thai trap, on the real bill --------------------------------------
   const thai = path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf');
-  if (fs.existsSync(thai)) {
+  if (haveFixture(thai, 'แปลงไฟล์: ใบวางบิลไทย (กับดักภาษาไทย)')) {
     const bytes = new Uint8Array(fs.readFileSync(thai));
     const pages = await pagesTextOf(bytes);
     const text = textOfPages(pages, { flow: 'keep-lines', pageSeparator: false });
@@ -123,7 +172,7 @@ export async function runConvertChecks(): Promise<number> {
   }
 
   // --- PDF to text, end to end ----------------------------------------------
-  if (fs.existsSync(thai)) {
+  if (haveFixture(thai, 'แปลงไฟล์: PDF เป็นข้อความ')) {
     const file: JobFile = { id: 't', name: 'ใบวางบิลไทย.pdf', bytes: new Uint8Array(fs.readFileSync(thai)) };
     const r = await convertOperation.run([file], opts({ to: 'txt' }), ctxWith());
     const written = new TextDecoder().decode(r.files[0].bytes);
@@ -150,12 +199,13 @@ export async function runConvertChecks(): Promise<number> {
   }
 
   // --- images to PDF ---------------------------------------------------------
-  const png = path.join(REPO, 'demo-3-applied.png');
-  const png2 = path.join(REPO, 'demo-4-batch.png');
-  if (fs.existsSync(png) && fs.existsSync(png2)) {
+  // The PNGs used to come from two screenshots sitting in the repo root, which
+  // are gitignored — so this whole block was skipped on every machine including
+  // the one it was written on, and had never actually run. Built here instead.
+  {
     const files: JobFile[] = [
-      { id: 'a', name: 'demo-3-applied.png', bytes: new Uint8Array(fs.readFileSync(png)) },
-      { id: 'b', name: 'demo-4-batch.png', bytes: new Uint8Array(fs.readFileSync(png2)) },
+      { id: 'a', name: 'wide.png', bytes: tinyPng(240, 120, [200, 40, 40]) },
+      { id: 'b', name: 'tall.png', bytes: tinyPng(90, 200, [40, 90, 200]) },
     ];
 
     const fit = await convertOperation.run(files, opts({ to: 'pdf' }), ctxWith());
@@ -189,8 +239,6 @@ export async function runConvertChecks(): Promise<number> {
     check('ขอบ 10 มม. เพิ่มขนาดหน้าทั้งสองด้าน',
       Math.abs(msize.width - (embedded.width + 20 * (72 / 25.4))) < 1,
       `${Math.round(msize.width)}`);
-  } else {
-    console.log('  ข้ามภาพ → PDF (ไม่พบไฟล์ตัวอย่าง)');
   }
 
   // --- refusing --------------------------------------------------------------

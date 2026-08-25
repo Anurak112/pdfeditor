@@ -1,0 +1,62 @@
+# Publish the built site to GitHub Pages.
+#
+# Manual on purpose, and not wired to push, because it cannot run yet: Pages on
+# a private repository needs GitHub Pro, and this account is on the free plan.
+# A workflow that fails on every push teaches people to ignore the red cross,
+# which is worse than not having it.
+#
+# It becomes usable the moment either of these is true:
+#
+#   · the account moves to Pro — then enable Pages (Settings → Pages → Source:
+#     GitHub Actions) and run this from the Actions tab
+#   · the repository is made public — but not before README.md, docs/ and
+#     tests/ are scrubbed, because they name real invoices, vendors and an
+#     address. The built site itself is already clean; the repository is not.
+#
+# For anything else — Cloudflare Pages, Netlify, a folder on the office server —
+# the ci workflow already uploads dist as an artifact on every run. That is the
+# same bytes this would publish.
+name: deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and let a newer one win rather than queue behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # Deploying something that has not been checked is how a broken page goes
+      # up on a Friday.
+      - run: npx tsc --noEmit -p tsconfig.json
+      - run: npm test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

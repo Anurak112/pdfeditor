@@ -8,6 +8,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
+import { haveFixture } from './fixtures';
 import path from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { mergeOperation, MERGE_DEFAULTS, type MergeOptions } from '../src/engine/operations/merge';
@@ -75,7 +76,9 @@ export async function runMergeChecks(): Promise<number> {
   };
   fs.mkdirSync(OUT, { recursive: true });
 
-  const missing = SOURCES.filter((s) => !fs.existsSync(s.file));
+  const missing = SOURCES.filter(
+    (s) => !haveFixture(s.file, 'รวมไฟล์: ' + s.file.split(/[\\/]/).pop()),
+  );
   if (missing.length > 0) {
     console.log('\n=== รวมไฟล์ : ข้าม (ไม่พบไฟล์ต้นทาง) ===');
     missing.forEach((m) => console.log('  ไม่พบ ' + m.file));

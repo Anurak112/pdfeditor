@@ -20,6 +20,7 @@ import { runConvertChecks } from './convert';
 import { runCompressChecks } from './compress';
 import { runUnlockChecks } from './unlock';
 import { runWorkerChecks } from './workers';
+import { haveFixture, reportFixtureSkips } from './fixtures';
 
 // the real job: the two Stripe documents that need the address fixed
 const JOB_DIR = path.join(
@@ -139,12 +140,7 @@ function diff(a: string, b: string): string {
 
 for (const name of JOB_FILES) {
   const file = path.join(JOB_DIR, name);
-  if (!fs.existsSync(file)) {
-    console.log(`
-MISSING ${file}`);
-    failures++;
-    continue;
-  }
+  if (!haveFixture(file, `งานจริง: ${name}`)) continue;
   // the actual change requested
   await runFile(file, '246/8', '135/7');
   // same length, different digits — proves it is not hard-coded to one string
@@ -164,5 +160,6 @@ failures += await runCompressChecks();
 failures += await runUnlockChecks();
 failures += await runWorkerChecks();
 
+reportFixtureSkips();
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

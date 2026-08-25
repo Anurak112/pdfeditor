@@ -1,0 +1,63 @@
+# Build and check on every push.
+#
+# The test suite leans on real documents — a Thai bill, a locked company
+# certificate — which are somebody's actual invoices and are not in this
+# repository. On a runner they are simply absent, so those checks skip and say
+# so, by name, at the end of the run. A green tick here means 182 checks passed
+# and twelve sets were skipped for want of files; on a machine that has them the
+# same command runs 332.
+#
+# The built site is uploaded on every run. Until there is somewhere to host it
+# automatically, that artifact is the delivery: download dist.zip from any run
+# and drop it on any static host.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the version this was developed and verified against. The
+          # tests use zlib.crc32 and import.meta.dirname, so nothing below 22
+          # will do.
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: types
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: svelte
+        run: npx svelte-check --threshold error
+
+      - name: tests
+        run: npm test
+
+      - name: build
+        run: npm run build
+
+      - name: what a first visit costs
+        run: |
+          echo "| file | raw | gzip |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          for f in dist/assets/*.js dist/assets/*.css; do
+            raw=$(( $(stat -c%s "$f") / 1024 ))
+            gz=$(( $(gzip -c "$f" | wc -c) / 1024 ))
+            echo "| $(basename $f) | ${raw} KB | ${gz} KB |" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          if-no-files-found: error
