@@ -33,8 +33,24 @@ npm test         # ชุดตรวจทั้งหมด
 
 ### เอาขึ้นเว็บ
 
-ทุกครั้งที่ push, workflow `ci` จะ build แล้วแนบ `dist` เป็น artifact ไว้ให้ — โหลด `site.zip` จาก
-แท็บ Actions แล้วเอาไปวางที่ไหนก็ได้
+ตัวจริงอยู่บน **Vercel** ต่อกับ branch `main` ของ repo นี้ — push แล้วขึ้นเอง
+
+ทุกครั้งที่ push, workflow `ci` จะ build แล้วแนบ `dist` เป็น artifact ไว้ด้วย — โหลด `site.zip` จาก
+แท็บ Actions แล้วเอาไปวางที่ไหนก็ได้ ใช้เป็นทางสำรองหรือย้ายไปโฮสต์ที่อื่น
+
+#### 🪤 อีเมลที่ commit ต้องเป็นคนที่อยู่ในทีม Vercel
+
+Vercel ตรวจ **ผู้เขียน commit** ไม่ใช่คนที่ push ถ้าอีเมลใน commit ไม่ผูกกับใครในทีม Vercel
+มันจะไม่ build เลย และ **ไม่มีอะไรแดงให้เห็น** — ขึ้นเป็น commit status เงียบ ๆ อันเดียวที่ไม่มี
+ใครเปิดดู เว็บค้างอยู่ที่ build เก่าโดยที่ทุกอย่างดูปกติหมด CI ก็เขียว
+
+เคยกินไป 4 deploy ติดกัน เพราะ `.git/config` ของ repo นี้เคยตั้งอีเมลไว้คนละอันกับ repo อื่น
+เช็คสองบรรทัดนี้ก่อนสงสัยว่าทำไมของใหม่ไม่ขึ้น:
+
+```bash
+git log -1 --format='%an <%ae>'
+gh api repos/Anurak112/pdfeditor/commits/main/status --jq .state
+```
 
 `deploy` workflow (ขึ้น GitHub Pages) มีให้แล้วแต่**ตั้งเป็นสั่งมือ** เพราะยังใช้ไม่ได้:
 Pages บน repo private ต้องมี GitHub Pro — รายละเอียดและเงื่อนไขที่จะทำให้ใช้ได้อยู่ในหัว
