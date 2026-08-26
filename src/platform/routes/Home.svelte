@@ -11,6 +11,7 @@
   import ErrorPanel from '../components/ErrorPanel.svelte';
   import ToolCard from '../components/ToolCard.svelte';
   import FileList from '../components/FileList.svelte';
+  import { presence } from '../presence.svelte';
   import { prefs } from '../prefs.svelte';
   import { router } from '../router.svelte';
   import { session } from '../session.svelte';
@@ -54,6 +55,19 @@
       <span class="lock" aria-hidden="true">🔒</span>
       {prefs.t('privacyBadge')}
     </p>
+
+    <!--
+      Absent until there is a real number to show. No skeleton, no "—", no
+      last-known value: this sits directly under a claim about what does and
+      does not leave the machine, and an invented number here would cost more
+      than the badge is worth.
+    -->
+    {#if presence.online !== null}
+      <p class="online" title={prefs.t('onlineWhat')}>
+        <span class="dot" aria-hidden="true"></span>
+        {prefs.t('onlineNow', { n: presence.online })}
+      </p>
+    {/if}
 
     {#if session.error}
       <div class="alert">
@@ -167,6 +181,36 @@
     gap: var(--space-2);
   }
   .lock { font-size: var(--fs-1); }
+
+  .online {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+    font-size: var(--fs-1);
+    font-variant-numeric: tabular-nums;
+    cursor: help;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  /* A dot that pulses forever is exactly the kind of thing this setting is for. */
+  @media (prefers-reduced-motion: reduce) {
+    .dot { animation: none; }
+  }
 
   .alert,
   .loaded { width: 100%; max-width: var(--col-2); }

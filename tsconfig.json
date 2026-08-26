@@ -23,6 +23,7 @@
     ]
   },
   "include": [
+    "api/**/*.ts",
     "src/**/*.ts",
     "src/**/*.svelte",
     "tests/**/*.ts",
