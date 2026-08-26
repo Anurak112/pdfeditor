@@ -25,6 +25,8 @@ const th = {
   browse: 'เลือกไฟล์',
 
   privacyBadge: 'ไฟล์ไม่ถูกส่งขึ้นเซิร์ฟเวอร์ · ไม่ต้องสมัครสมาชิก',
+  onlineNow: '{n} คนกำลังใช้อยู่',
+  onlineWhat: 'นับจากจำนวนแท็บที่เปิดหน้านี้อยู่ตอนนี้ ทุก 20 วินาที — ส่งไปแค่เลขสุ่มประจำแท็บ ไม่มีไฟล์ ไม่มีชื่อไฟล์ ไม่มีคุกกี้ และไม่เก็บอะไรไว้เกิน 45 วินาที',
   privacyFoot: 'ไฟล์ประมวลผลในเบราว์เซอร์ ไม่เคยถูกอัปโหลด',
 
   back: 'กลับ',
@@ -245,6 +247,8 @@ const en: Dict = {
   browse: 'Choose files',
 
   privacyBadge: 'Nothing is uploaded · No account needed',
+  onlineNow: '{n} using this now',
+  onlineWhat: 'Counted from the tabs that have this page open, every 20 seconds — all that is sent is a random number for the tab. No file, no filename, no cookie, and nothing kept longer than 45 seconds',
   privacyFoot: 'Files are processed in your browser and never uploaded',
 
   back: 'Back',

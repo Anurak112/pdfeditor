@@ -105,6 +105,10 @@ self.addEventListener('fetch', (event) => {
   // one would pin a dead handle, and an origin check alone would not catch it.
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
   if (url.origin !== self.location.origin) return;
+  // The live count is live or it is nothing. It is same-origin, so without
+  // this it would fall into the cache-first path below and the first number
+  // fetched would be handed back, unchanged, for the life of the build.
+  if (url.pathname.startsWith('/api/')) return;
 
   event.respondWith(request.mode === 'navigate' ? shell(request) : asset(request));
 });

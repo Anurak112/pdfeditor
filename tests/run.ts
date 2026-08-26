@@ -22,6 +22,7 @@ import { runUnlockChecks } from './unlock';
 import { runWorkerChecks } from './workers';
 import { runPwaChecks } from './pwa';
 import { runOfflineChecks } from './offline';
+import { runPresenceChecks } from './presence';
 import { FIXTURE_LABEL, docText, fixture, haveFixture, reportFixtureSkips } from './fixtures';
 
 // the real job: the two documents that need the address fixed
@@ -164,6 +165,7 @@ failures += await runUnlockChecks();
 failures += await runWorkerChecks();
 failures += await runPwaChecks();
 failures += await runOfflineChecks();
+failures += await runPresenceChecks();
 
 reportFixtureSkips();
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
