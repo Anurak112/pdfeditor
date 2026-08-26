@@ -4,15 +4,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { extractPageText, findOnPage } from '../src/lib/pdf/textExtract';
 import { buildEditedPdf, type Replacement } from '../src/lib/pdf/exporter';
+import { docText, fixture, jobFolder } from './fixtures';
 
-const JOB_DIR = path.join(process.env.USERPROFILE ?? '.', 'Downloads', 'โฟลเดอร์งาน', 'production001');
+const JOB_DIR = jobFolder();
 const OUT = path.join(import.meta.dirname, '..', 'output');
-const FIND = '246/8';
+const FIND = docText('jobInvoice', 'address');
 const REPLACE = '135/7';
+if (!FIND) throw new Error('ตั้งค่า text.jobInvoice.address ใน tests/fixtures.local.json ก่อน');
 
 fs.mkdirSync(OUT, { recursive: true });
-for (const name of ['ใบแจ้งหนี้งานจริง.pdf', 'ใบเสร็จงานจริง.pdf']) {
-  const src = path.join(JOB_DIR, name);
+for (const key of ['jobInvoice', 'jobReceipt'] as const) {
+  const src = fixture(key);
+  const name = path.basename(src);
   const bytes = new Uint8Array(fs.readFileSync(src));
   const doc = (await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise) as never;
   const pageText = await extractPageText(doc, 1);

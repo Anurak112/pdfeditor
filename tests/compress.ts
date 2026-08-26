@@ -30,10 +30,10 @@ import {
 } from '../src/engine/operations/compress';
 import { decodeSamples, listImages, scanPlacements } from '../src/engine/images';
 import { createJob, runJob } from '../src/engine/job';
+import { DOWNLOADS, fixture } from './fixtures';
 import type { ImageRecoder, JobFile, OperationContext } from '../src/engine/types';
 import type { AppError } from '../src/engine/errors';
 
-const DOWNLOADS = path.join(process.env.USERPROFILE ?? process.env.HOME ?? os.homedir(), 'Downloads');
 const OUT = path.join(import.meta.dirname, 'out');
 
 // ---------------------------------------------------------------------------
@@ -564,39 +564,42 @@ export async function runCompressChecks(): Promise<number> {
  */
 async function measureRealDocuments(check: (l: string, ok: boolean, d?: string) => void): Promise<void> {
   const candidates = [
-    { file: 'Untitled.pdf', note: '15 สไลด์ ภาพดิบ Flate ล้วน' },
-    { file: 'มัดจำ.pdf', note: 'สไลด์เดียว ภาพ Flate' },
-    { file: 'ใบแจ้งหนี้มีโลโก้.pdf', note: 'ใบแจ้งหนี้ + โลโก้ 2000x2000' },
-    { file: 'เอกสารข้อความล้วน.pdf', note: 'ข้อความล้วน ไม่มีภาพเลย' },
+    { file: path.join(DOWNLOADS, 'Untitled.pdf'), note: '15 สไลด์ ภาพดิบ Flate ล้วน' },
+    { file: path.join(DOWNLOADS, 'มัดจำ.pdf'), note: 'สไลด์เดียว ภาพ Flate' },
+    { file: fixture('invoiceWithLogo'), note: 'ใบแจ้งหนี้ + โลโก้ 2000x2000' },
+    { file: fixture('textOnlyDeck'), note: 'ข้อความล้วน ไม่มีภาพเลย' },
   ];
 
   let ran = 0;
   for (const { file, note } of candidates) {
-    const full = path.join(DOWNLOADS, file);
+    const full = file;
     if (!fs.existsSync(full)) continue;
+    // What gets printed is what the document *is*, never where it lives: these
+    // are somebody's files and the log ends up in CI output and in tickets.
+    const label = note;
     const bytes = new Uint8Array(fs.readFileSync(full));
     // The 37 MB deck is the best fixture here and much the slowest; the box
     // filter in this file is not what ships, so measuring it is not worth a
     // minute of every test run.
     if (bytes.byteLength > 4 * 1024 * 1024) {
-      console.log(`  (ข้าม ${file} — ${kb(bytes.byteLength)} ใหญ่เกินกว่าจะวัดทุกรอบ)`);
+      console.log(`  (ข้าม ${note} — ${kb(bytes.byteLength)} ใหญ่เกินกว่าจะวัดทุกรอบ)`);
       continue;
     }
 
     const ctx = ctxWith();
     const started = Date.now();
-    const result = await compressOperation.run([{ id: file, name: file, bytes }], opts(), ctx);
+    const result = await compressOperation.run([{ id: label, name: path.basename(full), bytes }], opts(), ctx);
     const after = result.files[0].bytes.byteLength;
     ran++;
     console.log(
-      `  วัดจริง: ${file}  ${kb(bytes.byteLength)} -> ${kb(after)}  ` +
-        `(-${(result.stats?.savedPercent ?? 0).toFixed(1)}%, ${Date.now() - started}ms)  ${note}`,
+      `  วัดจริง: ${label}  ${kb(bytes.byteLength)} -> ${kb(after)}  ` +
+        `(-${(result.stats?.savedPercent ?? 0).toFixed(1)}%, ${Date.now() - started}ms)`,
     );
 
-    check(`${file}: ไม่ใหญ่กว่าเดิม`, after <= bytes.byteLength, `${kb(bytes.byteLength)} -> ${kb(after)}`);
+    check(`${label}: ไม่ใหญ่กว่าเดิม`, after <= bytes.byteLength, `${kb(bytes.byteLength)} -> ${kb(after)}`);
     const reopened = await openPdfjs(result.files[0].bytes);
     const originalPages = await openPdfjs(bytes);
-    check(`${file}: หน้าครบเท่าเดิมและยังเปิดได้`, reopened.numPages === originalPages.numPages,
+    check(`${label}: หน้าครบเท่าเดิมและยังเปิดได้`, reopened.numPages === originalPages.numPages,
       `${originalPages.numPages} -> ${reopened.numPages}`);
   }
 

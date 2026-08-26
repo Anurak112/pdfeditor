@@ -8,7 +8,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
-import { haveFixture } from './fixtures';
+import { fixture, haveFixture, jobFolder } from './fixtures';
 import path from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { mergeOperation, MERGE_DEFAULTS, type MergeOptions } from '../src/engine/operations/merge';
@@ -18,16 +18,16 @@ import { appWarning, toAppError } from '../src/engine/errors';
 import type { AppError } from '../src/engine/errors';
 
 const HOME = process.env.USERPROFILE ?? process.env.HOME ?? '.';
-const JOB = path.join(HOME, 'Downloads', 'โฟลเดอร์งาน', 'production001');
+const JOB = jobFolder();
 const DOWNLOADS = path.join(HOME, 'Downloads');
 const OUT = path.join(import.meta.dirname, 'out');
 
 const SOURCES = [
-  { id: 'f1', file: path.join(JOB, 'ใบแจ้งหนี้งานจริง.pdf') },
-  { id: 'f2', file: path.join(JOB, 'ใบเสร็จงานจริง.pdf') },
+  { id: 'f1', file: fixture('jobInvoice') },
+  { id: 'f2', file: fixture('jobReceipt') },
   {
     id: 'f3',
-    file: path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf'),
+    file: fixture('thaiBill'),
   },
 ];
 

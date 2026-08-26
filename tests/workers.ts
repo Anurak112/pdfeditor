@@ -10,11 +10,11 @@
  * What only a browser can check, and what was checked by hand in the production
  * build (not the dev server, which is where this hid):
  *
- *   ใบแจ้งหนี้มีโลโก้.pdf → JPG   — the document that crashed. Its logo
+ *   the invoiceWithLogo fixture → JPG    — the document that crashed. Its logo
  *     drives pdf.js to ask for a scratch canvas, and the default factory does
  *     globalThis.document.createElement, which in a worker is undefined.
- *   คู่มือภาษาไทย.pdf → thumbs and one full page — the render worker's two jobs,
- *     Thai glyphs intact.
+ *   a Thai-language manual → thumbs and one full page — the render worker's
+ *     two jobs, Thai glyphs intact.
  *
  * Re-run those two by hand after touching anything in this area. A green run
  * here means the wiring is shared; it does not mean the pixels came out.

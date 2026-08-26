@@ -8,7 +8,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
-import { haveFixture } from './fixtures';
+import { docText, fixture, haveFixture, jobFolder } from './fixtures';
 import path from 'node:path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { editOperation, EDIT_DEFAULTS, countMatches, type EditOptions } from '../src/engine/operations/edit';
@@ -19,7 +19,7 @@ import type { AppError } from '../src/engine/errors';
 import { mixedPlacementPdf } from './synthetic';
 
 const HOME = process.env.USERPROFILE ?? process.env.HOME ?? '.';
-const JOB = path.join(HOME, 'Downloads', 'โฟลเดอร์งาน', 'production001');
+const JOB = jobFolder();
 const DOWNLOADS = path.join(HOME, 'Downloads');
 const OUT = path.join(import.meta.dirname, 'out');
 
@@ -115,20 +115,27 @@ export async function runEditChecks(): Promise<number> {
 
   console.log('\n=== แก้ข้อความ ===');
 
+  // Everything below that runs on the real job invoice needs the address that
+  // is actually printed on it, which is the customer's, not ours to commit.
+  const jobAddress = docText('jobInvoice', 'address') ?? '';
+
   // --- the claim, on a real Stripe invoice ---------------------------------
-  const stripe = path.join(JOB, 'ใบแจ้งหนี้งานจริง.pdf');
+  const stripe = fixture('jobInvoice');
   if (haveFixture(stripe, 'แก้ข้อความ: ใบแจ้งหนี้ Stripe')) {
-    const file: JobFile = { id: 's', name: 'ใบแจ้งหนี้งานจริง.pdf', bytes: new Uint8Array(fs.readFileSync(stripe)) };
+    const file: JobFile = { id: 's', name: path.basename(stripe), bytes: new Uint8Array(fs.readFileSync(stripe)) };
     const ctx = ctxWith();
-    const result = await editOperation.run([file], opts({ find: '246/8', replace: '135/7' }), ctx);
+    const vendor = docText('jobInvoice', 'vendor');
+    const vendorCity = docText('jobInvoice', 'vendorCity');
+    const result = await editOperation.run([file], opts({ find: jobAddress, replace: '135/7' }), ctx);
     const bytes = result.files[0].bytes;
     fs.writeFileSync(path.join(OUT, 'op-edit-stripe.pdf'), bytes);
 
     const after = await textOf(bytes);
     check('ข้อความใหม่อยู่ในไฟล์', after.includes('135/7'));
-    check('ข้อความเดิมหายจาก text layer จริง', !after.includes('246/8'),
+    check('ข้อความเดิมหายจาก text layer จริง', !!jobAddress && !after.includes(jobAddress),
       'นี่คือข้อที่คู่แข่งทำไม่ได้');
-    check('ข้อความอื่นในหน้ายังอยู่', after.includes('Anthropic') && after.includes('San Francisco'));
+    check('ข้อความอื่นในหน้ายังอยู่',
+      (!vendor || after.includes(vendor)) && (!vendorCity || after.includes(vendorCity)));
     check('นับจำนวนจุดที่แก้', (result.stats?.replacements ?? 0) > 0, String(result.stats?.replacements));
   } else {
     console.log('  ข้าม Stripe (ไม่พบไฟล์)');
@@ -139,24 +146,34 @@ export async function runEditChecks(): Promise<number> {
   // The invoice number rather than the address: this file gets edited by hand
   // between runs, so a hardcoded address value goes stale and the test starts
   // reporting an engine failure for a fixture that simply moved on.
-  const thai = path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf');
+  const thai = fixture('thaiBill');
   if (haveFixture(thai, 'แก้ข้อความ: ใบวางบิลไทย')) {
     const file: JobFile = { id: 't', name: 'ใบวางบิลไทย.pdf', bytes: new Uint8Array(fs.readFileSync(thai)) };
     const before = await textOf(file.bytes);
-    check('ใบวางบิลไทย: มีเลขที่ใบวางบิลให้แก้', before.includes('INV-0000-000'));
+    const docNo = docText('thaiBill', 'docNumber');
+    const locality = docText('thaiBill', 'locality');
+    if (!docNo) {
+      console.log('  (ไม่รู้เลขที่เอกสารของไฟล์นี้ — ตั้งได้ที่ tests/fixtures.local.json)');
+    } else {
+      // A new number of the same shape: same length, so the path this takes is
+      // the one the real edit takes — and no real number is written down here.
+      const nextDocNo = docNo.slice(0, -3) + '042';
+      check('ใบวางบิลไทย: มีเลขที่ใบวางบิลให้แก้', before.includes(docNo));
 
-    const result = await editOperation.run(
-      [file],
-      opts({ find: 'INV-0000-000', replace: 'INV-0000-042' }),
-      ctxWith(),
-    );
-    const after = await textOf(result.files[0].bytes);
-    fs.writeFileSync(path.join(OUT, 'op-edit-thai.pdf'), result.files[0].bytes);
+      const result = await editOperation.run(
+        [file],
+        opts({ find: docNo, replace: nextDocNo }),
+        ctxWith(),
+      );
+      const after = await textOf(result.files[0].bytes);
+      fs.writeFileSync(path.join(OUT, 'op-edit-thai.pdf'), result.files[0].bytes);
 
-    check('ใบวางบิลไทย: ค่าใหม่เข้าไปแล้ว', after.includes('INV-0000-042'));
-    check('ใบวางบิลไทย: ค่าเดิมหายจาก text layer', !after.includes('INV-0000-000'));
-    check('ใบวางบิลไทย: ข้อความไทยอื่นไม่เสียหาย', after.includes('ใบวางบิล') && after.includes('ตำบลตัวอย่าง'));
-    check('ชื่อไฟล์ผลลัพธ์เป็นไทยได้', result.files[0].name.includes('แก้แล้ว'), result.files[0].name);
+      check('ใบวางบิลไทย: ค่าใหม่เข้าไปแล้ว', after.includes(nextDocNo));
+      check('ใบวางบิลไทย: ค่าเดิมหายจาก text layer', !after.includes(docNo));
+      check('ใบวางบิลไทย: ข้อความไทยอื่นไม่เสียหาย',
+        after.includes('ใบวางบิล') && (!locality || after.includes(locality)));
+      check('ชื่อไฟล์ผลลัพธ์เป็นไทยได้', result.files[0].name.includes('แก้แล้ว'), result.files[0].name);
+    }
   } else {
     console.log('  ข้ามใบวางบิลไทย (ไม่พบไฟล์)');
   }
@@ -165,13 +182,13 @@ export async function runEditChecks(): Promise<number> {
   const haveStripe = fs.existsSync(stripe);
   const tripledBytes = haveStripe ? await tripled(new Uint8Array(fs.readFileSync(stripe))) : null;
 
-  if (tripledBytes) {
+  if (tripledBytes && jobAddress) {
     const bytes = tripledBytes;
     const file: JobFile = { id: 'm', name: 'marked.pdf', bytes };
 
     const scoped = await editOperation.run(
       [file],
-      opts({ find: '246/8', replace: '135/7', scope: 'this-page', page: 2 }),
+      opts({ find: jobAddress, replace: '135/7', scope: 'this-page', page: 2 }),
       ctxWith(),
     );
     const out = scoped.files[0].bytes;
@@ -180,24 +197,24 @@ export async function runEditChecks(): Promise<number> {
     check('แก้เฉพาะหน้าที่ระบุ: หน้า 2 มีค่าใหม่', p2.includes('135/7'));
     // The assertion that matters: the old value must be gone, not merely
     // covered. Checking only for the new one passes even for an overlay.
-    check('แก้เฉพาะหน้าที่ระบุ: หน้า 2 ค่าเดิมหายจริง', !p2.includes('246/8'));
-    check('แก้เฉพาะหน้าที่ระบุ: หน้า 1 ไม่ถูกแตะ', p1.includes('246/8'));
-    check('แก้เฉพาะหน้าที่ระบุ: หน้า 3 ไม่ถูกแตะ', p3.includes('246/8'));
+    check('แก้เฉพาะหน้าที่ระบุ: หน้า 2 ค่าเดิมหายจริง', !p2.includes(jobAddress));
+    check('แก้เฉพาะหน้าที่ระบุ: หน้า 1 ไม่ถูกแตะ', p1.includes(jobAddress));
+    check('แก้เฉพาะหน้าที่ระบุ: หน้า 3 ไม่ถูกแตะ', p3.includes(jobAddress));
     check('นับเฉพาะจุดในขอบเขต', scoped.stats?.replacements === 1, String(scoped.stats?.replacements));
 
     const every = await editOperation.run(
       [file],
-      opts({ find: '246/8', replace: '135/7', scope: 'all-pages' }),
+      opts({ find: jobAddress, replace: '135/7', scope: 'all-pages' }),
       ctxWith(),
     );
     check('ทุกหน้า: แก้ครบ 3 จุด', every.stats?.replacements === 3, String(every.stats?.replacements));
   }
 
   // --- counting before running ---------------------------------------------
-  if (tripledBytes) {
+  if (tripledBytes && jobAddress) {
     const doc = (await pdfjsLib.getDocument({ data: new Uint8Array(tripledBytes) }).promise) as never;
     const pages = await readAllPages(doc);
-    const found = countMatches(pages, '246/8');
+    const found = countMatches(pages, jobAddress);
     check('นับจำนวนที่เจอได้ก่อนลงมือ', found.total === 3 && found.pages.length === 3,
       `${found.total} จุด ใน ${found.pages.length} หน้า`);
     const none = countMatches(pages, 'NOT-PRESENT');
@@ -242,11 +259,11 @@ export async function runEditChecks(): Promise<number> {
   }
 
   // --- batch ----------------------------------------------------------------
-  if (tripledBytes) {
+  if (tripledBytes && jobAddress) {
     const a: JobFile = { id: 'a', name: 'first.pdf', bytes: tripledBytes };
     const b: JobFile = { id: 'b', name: 'second.pdf', bytes: tripledBytes };
 
-    const both = await editOperation.run([a, b], opts({ find: '246/8', replace: '135/7' }), ctxWith());
+    const both = await editOperation.run([a, b], opts({ find: jobAddress, replace: '135/7' }), ctxWith());
     check('สองไฟล์ที่แก้ได้ทั้งคู่ → ห่อ ZIP', both.files[0].mimeType === 'application/zip',
       both.files[0].mimeType);
     check('ZIP เป็นชิ้นเดียว', both.files.length === 1);
@@ -258,7 +275,7 @@ export async function runEditChecks(): Promise<number> {
     const missing: JobFile = { id: 'c', name: 'has-not.pdf', bytes: await other.save() };
 
     const ctx = ctxWith();
-    const one = await editOperation.run([a, missing], opts({ find: '246/8', replace: '135/7' }), ctx);
+    const one = await editOperation.run([a, missing], opts({ find: jobAddress, replace: '135/7' }), ctx);
     check('เจอไฟล์เดียว → คืน PDF เปล่า ๆ ไม่ห่อ ZIP ให้เก้อ',
       one.files[0].mimeType === 'application/pdf', one.files[0].mimeType);
     check('ไฟล์ที่ไม่เจอข้อความถูกเตือน ไม่ใช่เงียบ',
@@ -267,7 +284,7 @@ export async function runEditChecks(): Promise<number> {
   }
 
   // --- refusing, clearly ----------------------------------------------------
-  if (tripledBytes) {
+  if (tripledBytes && jobAddress) {
     const file: JobFile = { id: 'm', name: 'marked.pdf', bytes: tripledBytes };
 
     const notFound = await runJob(createJob('edit', [file], opts({ find: 'ABSENT', replace: 'X' })), { openPdfjs });
@@ -284,15 +301,15 @@ export async function runEditChecks(): Promise<number> {
       scanned.error?.code === 'E_NO_TEXT_LAYER', scanned.error?.code ?? 'none');
 
     // The host that cannot load pdf.js must be told, not left to fail obscurely.
-    const noOpener = await runJob(createJob('edit', [file], opts({ find: '246/8', replace: 'X' })));
+    const noOpener = await runJob(createJob('edit', [file], opts({ find: jobAddress, replace: 'X' })));
     check('host ที่ไม่มี pdf.js → บอกตรง ๆ ว่าเป็นความผิดเรา', noOpener.error?.code === 'E_INTERNAL',
       noOpener.error?.code ?? 'none');
   }
 
   // --- the job layer end to end --------------------------------------------
-  if (tripledBytes) {
+  if (tripledBytes && jobAddress) {
     const file: JobFile = { id: 'm', name: 'marked.pdf', bytes: tripledBytes };
-    const done = await runJob(createJob('edit', [file], opts({ find: '246/8', replace: '135/7' })), { openPdfjs });
+    const done = await runJob(createJob('edit', [file], opts({ find: jobAddress, replace: '135/7' })), { openPdfjs });
     check('ผ่าน runJob ได้ผลลัพธ์', done.state === 'done' && done.result?.files.length === 1, done.state);
     check('runJob รายงานจำนวนจุดที่แก้', done.result?.stats?.replacements === 3,
       String(done.result?.stats?.replacements));

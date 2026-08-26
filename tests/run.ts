@@ -22,14 +22,10 @@ import { runUnlockChecks } from './unlock';
 import { runWorkerChecks } from './workers';
 import { runPwaChecks } from './pwa';
 import { runOfflineChecks } from './offline';
-import { haveFixture, reportFixtureSkips } from './fixtures';
+import { FIXTURE_LABEL, docText, fixture, haveFixture, reportFixtureSkips } from './fixtures';
 
-// the real job: the two Stripe documents that need the address fixed
-const JOB_DIR = path.join(
-  process.env.USERPROFILE ?? process.env.HOME ?? '.',
-  'Downloads', 'โฟลเดอร์งาน', 'production001',
-);
-const JOB_FILES = ['ใบแจ้งหนี้งานจริง.pdf', 'ใบเสร็จงานจริง.pdf'];
+// the real job: the two documents that need the address fixed
+const JOB_DOCS = ['jobInvoice', 'jobReceipt'] as const;
 const OUT = path.join(import.meta.dirname, 'out');
 
 let failures = 0;
@@ -140,15 +136,20 @@ function diff(a: string, b: string): string {
   return '';
 }
 
-for (const name of JOB_FILES) {
-  const file = path.join(JOB_DIR, name);
-  if (!haveFixture(file, `งานจริง: ${name}`)) continue;
+const jobAddress = docText('jobInvoice', 'address');
+for (const key of JOB_DOCS) {
+  const file = fixture(key);
+  if (!haveFixture(file, FIXTURE_LABEL[key])) continue;
+  if (!jobAddress) {
+    console.log('  (ไม่รู้เลขที่อยู่บนเอกสารงานจริง — ตั้งได้ที่ tests/fixtures.local.json)');
+    break;
+  }
   // the actual change requested
-  await runFile(file, '246/8', '135/7');
+  await runFile(file, jobAddress, '135/7');
   // same length, different digits — proves it is not hard-coded to one string
-  await runFile(file, '246/8', '135/9');
+  await runFile(file, jobAddress, '135/9');
   // longer replacement — exercises the erase + redraw fallback
-  await runFile(file, '246/8', '1234/56');
+  await runFile(file, jobAddress, '1234/56');
 }
 
 failures += await runWiderFixtures();

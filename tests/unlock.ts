@@ -33,7 +33,7 @@ import { createJob, runJob } from '../src/engine/job';
 import type { JobFile, OperationContext } from '../src/engine/types';
 import type { AppError } from '../src/engine/errors';
 
-const DOWNLOADS = path.join(process.env.USERPROFILE ?? process.env.HOME ?? os.homedir(), 'Downloads');
+import { fixture } from './fixtures';
 const OUT = path.join(import.meta.dirname, 'out');
 
 const PAD = new Uint8Array([
@@ -550,7 +550,7 @@ export async function runUnlockChecks(): Promise<number> {
 
   // --- and the one real locked document on this machine ---------------------
   {
-    const real = path.join(DOWNLOADS, 'เอกสารใส่รหัสผ่าน.pdf');
+    const real = fixture('lockedCertificate');
     if (!fs.existsSync(real)) {
       console.log('  (ไม่มีไฟล์ล็อกจริงบนเครื่องนี้ — ข้ามการตรวจกับของจริง)');
     } else {

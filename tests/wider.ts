@@ -8,7 +8,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
-import { haveFixture } from './fixtures';
+import { docText, fixture, haveFixture } from './fixtures';
 import path from 'node:path';
 import { extractPageText, findOnPage, type PageText, type PdfTextItem } from '../src/lib/pdf/textExtract';
 import { buildEditedPdf } from '../src/lib/pdf/exporter';
@@ -28,21 +28,21 @@ export interface Fixture {
 
 export const WIDER_FIXTURES: Fixture[] = [
   {
-    file: path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf'),
-    find: '135/7',
+    file: fixture('thaiBill'),
+    find: docText('thaiBill', 'address') ?? '',
     replace: '246/8',
     method: 'native',
     note: 'ฟอนต์ 1 ไบต์ + ข้อความแบบ (…) Tj — เดิมทำได้แค่ทับ',
   },
   {
-    file: path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf'),
-    find: '135/7',
+    file: fixture('thaiBill'),
+    find: docText('thaiBill', 'address') ?? '',
     replace: '1234/56',
     method: 'native',
     note: 'ยาวไม่เท่าเดิม — ต้องยังแก้ในไฟล์ตรง ๆ ได้',
   },
   {
-    file: path.join(DOWNLOADS, 'ใบแจ้งหนี้มีโลโก้.pdf'),
+    file: fixture('invoiceWithLogo'),
     find: 'Thai dubbing',
     // deliberately not a superset of the needle, so "gone from the file" means something
     replace: 'TH voice-over',
@@ -140,8 +140,12 @@ async function checkPushMode(): Promise<number> {
   const file = WIDER_FIXTURES[0].file;
   if (!haveFixture(file, 'โหมดดันข้อความ')) return 0;
 
-  const find = '135/7';
+  const find = docText('thaiBill', 'address');
   const replace = '1234/56';
+  if (!find) {
+    console.log('  (ไม่รู้เลขที่อยู่บนเอกสารนี้ — ตั้งได้ที่ tests/fixtures.local.json)');
+    return 0;
+  }
   console.log(`
 === ${path.basename(file)} : โหมดดันข้อความ "${find}" -> "${replace}" ===`);
 

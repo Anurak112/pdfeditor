@@ -50,11 +50,11 @@ export function mixedPlacementPdf(): Promise<Uint8Array> {
   return pageWithOps((f) => `BT
 /${f} 12 Tf
 1 0 0 1 40 100 Tm
-(53) Tj
+(24) Tj
 13.344 0 Td
-(8/) Tj
+(6/) Tj
 1 0 0 1 63.352 100 Tm
-(1) Tj
+(8) Tj
 ET
 BT
 /${f} 12 Tf

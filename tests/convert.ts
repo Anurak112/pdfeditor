@@ -13,7 +13,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import fs from 'node:fs';
-import { haveFixture } from './fixtures';
+import { docText, fixture, haveFixture, jobFolder } from './fixtures';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -32,7 +32,7 @@ import type { AppError } from '../src/engine/errors';
 
 const HOME = process.env.USERPROFILE ?? process.env.HOME ?? '.';
 const DOWNLOADS = path.join(HOME, 'Downloads');
-const JOB = path.join(DOWNLOADS, 'โฟลเดอร์งาน', 'production001');
+const JOB = jobFolder();
 const OUT = path.join(import.meta.dirname, 'out');
 
 const openPdfjs: PdfjsOpener = async (bytes) => {
@@ -133,7 +133,7 @@ export async function runConvertChecks(): Promise<number> {
   }
 
   // --- the Thai trap, on the real bill --------------------------------------
-  const thai = path.join(DOWNLOADS, 'ใบวางบิลไทย.pdf');
+  const thai = fixture('thaiBill');
   if (haveFixture(thai, 'แปลงไฟล์: ใบวางบิลไทย (กับดักภาษาไทย)')) {
     const bytes = new Uint8Array(fs.readFileSync(thai));
     const pages = await pagesTextOf(bytes);
@@ -143,9 +143,12 @@ export async function runConvertChecks(): Promise<number> {
     check('ไทย: คำไม่ถูกแยกด้วยช่องว่าง', text.includes('ใบวางบิล'),
       'ถ้าพังจะได้ "ใ บ ว า ง บิ ล"');
     check('ไทย: ไม่มีช่องว่างแทรกกลางคำไทย', !/[ก-๙] [ก-๙]/.test(text.replace(/ {2,}/g, ' ')) || text.includes('ใบวางบิล'));
-    check('ไทย: ชื่อสถานที่ยาว ๆ ยังติดกัน', text.includes('ตำบลตัวอย่าง'), 'ตำบลตัวอย่าง');
-    check('ไทย: เลขที่เอกสารไม่ถูกตัด', text.includes('INV-0000-000'));
-    check('อังกฤษ: คำที่ควรมีช่องว่างยังมี', /PHU OOK EKKASAN/.test(text));
+    const locality = docText('thaiBill', 'locality');
+    if (locality) check('ไทย: ชื่อสถานที่ยาว ๆ ยังติดกัน', text.includes(locality));
+    const docNo = docText('thaiBill', 'docNumber');
+    const issuer = docText('thaiBill', 'issuer');
+    if (docNo) check('ไทย: เลขที่เอกสารไม่ถูกตัด', text.includes(docNo));
+    if (issuer) check('อังกฤษ: คำที่ควรมีช่องว่างยังมี', text.includes(issuer));
 
     const lines = linesOfPage(pages[0]);
     check('แบ่งบรรทัดตามเส้นฐานจริง ไม่ใช่ก้อนเดียว', lines.length > 5, `${lines.length} บรรทัด`);

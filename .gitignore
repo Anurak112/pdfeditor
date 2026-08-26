@@ -10,3 +10,13 @@ output/
 # once: git add -A reported the folder as new, committed the two non-PNG files
 # in it, and said nothing about the four it skipped. CI caught it.
 !public/*.png
+
+# The one-file predecessor. It stays on disk because it still opens with a
+# double-click, but it is not ours to publish: its find/replace boxes ship
+# pre-filled with the house numbers off a real company certificate, and this
+# repository is public. Its successor is #/legacy in the app.
+PDF-Editor.html
+
+# Which real documents this machine has, and what is written inside them.
+# Names alone identify a customer and an invoice, so they live here, not in git.
+tests/fixtures.local.json
